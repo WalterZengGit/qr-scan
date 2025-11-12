@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="ja">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>掃描 QR Code</title>
+  <title>QRコードをスキャン</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", Arial, "Helvetica Neue", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans JP", Arial, "Helvetica Neue", sans-serif;
       margin: 16px;
     }
     .wrap { max-width: 680px; margin: 0 auto; }
@@ -34,21 +34,21 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>掃描 QR Code</h1>
-  <div class="hint">提示：請用 HTTPS 或 localhost 開啟。iOS 需用 Safari；Android 建議用 Chrome。</div>
+  <h1>QRコードをスキャン</h1>
+  <div class="hint">ヒント：HTTPSまたはlocalhostで開いてください。iOSはSafari、AndroidはChromeを推奨します。</div>
 
   <div class="btns">
-    <button id="startBtn">啟動相機掃描</button>
-    <button id="stopBtn" disabled>停止相機</button>
-    <label for="upload">或上傳照片解析</label>
+    <button id="startBtn">カメラを起動してスキャン</button>
+    <button id="stopBtn" disabled>カメラを停止</button>
+    <label for="upload">または画像から読み取る</label>
     <input id="upload" type="file" accept="image/*" capture="environment">
   </div>
 
   <video id="preview" muted playsinline></video>
-  <div class="out" id="result">結果將顯示在這裡</div>
+  <div class="out" id="result">結果はここに表示されます</div>
 </div>
 
-<!-- 掃描功能 -->
+<!-- スキャン機能 -->
 <script type="module">
 import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm";
 import { NotFoundException } from "https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
@@ -85,7 +85,7 @@ async function startScan() {
   };
 
   startBtn.disabled = true;
-  show("嘗試啟動相機中…請允許相機權限");
+  show("カメラを起動しています… カメラの使用を許可してください。");
 
   try {
     controls = await reader.decodeFromVideoDevice(
@@ -95,9 +95,9 @@ async function startScan() {
         if (result) {
           const text = result.getText();
           const html = linkify(text);
-          resultEl.innerHTML = "✔ 已讀取：<br>" + html;
+          resultEl.innerHTML = "✔ 読み取り成功：<br>" + html;
 
-          // 讀到後自動停止
+          // 読み取り後に自動停止
           stopScan();
         } else if (err && !(err instanceof NotFoundException)) {
           console.warn(err);
@@ -106,10 +106,10 @@ async function startScan() {
     );
 
     stopBtn.disabled = false;
-    show("相機已啟動，請把 QR Code 對準取景框");
+    show("カメラが起動しました。QRコードを枠内に合わせてください。");
   } catch (e) {
     console.error(e);
-    show("❌ 無法啟動相機，可能沒有權限或非 HTTPS 環境。\n錯誤：" + e);
+    show("❌ カメラを起動できませんでした。権限がないか、HTTPS環境ではない可能性があります。\nエラー：" + e);
     startBtn.disabled = false;
   }
 }
@@ -124,12 +124,12 @@ function stopScan() {
 startBtn.addEventListener('click', startScan);
 stopBtn.addEventListener('click', stopScan);
 
-// 圖片上傳解析
+// 画像アップロード解析
 upload.addEventListener('change', async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
 
-  show("讀取圖片中…");
+  show("画像を読み込んでいます…");
   const url = URL.createObjectURL(file);
 
   try {
@@ -137,24 +137,24 @@ upload.addEventListener('change', async (e) => {
     const res = await reader.decodeFromImageUrl(url);
     const text = res.getText();
     const html = linkify(text);
-    resultEl.innerHTML = "✔ 已讀取：<br>" + html;
+    resultEl.innerHTML = "✔ 読み取り成功：<br>" + html;
   } catch (err) {
     console.error(err);
-    show("❌ 沒有成功識別 QR Code，請換張更清晰的照片");
+    show("❌ QRコードの認識に失敗しました。もう少し鮮明な画像をお試しください。");
   } finally {
     URL.revokeObjectURL(url);
   }
 });
 
-// 頁面卸載時停止相機
+// ページ離脱時にカメラを停止
 window.addEventListener('pagehide', stopScan);
 window.addEventListener('beforeunload', stopScan);
 </script>
 
-<!-- 可選：偵測是否支援 BarcodeDetector -->
+<!-- オプション：BarcodeDetectorのサポート検出 -->
 <script>
 if ('BarcodeDetector' in window) {
-  console.log('此裝置支援 BarcodeDetector，可用原生 API 加速掃描。');
+  console.log('このデバイスは BarcodeDetector に対応しています。ネイティブAPIで高速スキャン可能です。');
 }
 </script>
 </body>
