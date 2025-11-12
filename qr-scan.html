@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>掃描 QR Code</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", Arial, "Helvetica Neue", sans-serif;
+      margin: 16px;
+    }
+    .wrap { max-width: 680px; margin: 0 auto; }
+    video { width: 100%; border-radius: 12px; background: #000; }
+    .btns { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+    button {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      background: #fff;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .out { margin-top: 12px; padding: 12px; border-radius: 10px; background: #f6f7f9; word-break: break-all; }
+    .hint { color: #666; font-size: 14px; }
+    input[type=file] { display: none; }
+    label[for=upload] {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      background: #fff;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>掃描 QR Code</h1>
+  <div class="hint">提示：請用 HTTPS 或 localhost 開啟。iOS 需用 Safari；Android 建議用 Chrome。</div>
+
+  <div class="btns">
+    <button id="startBtn">啟動相機掃描</button>
+    <button id="stopBtn" disabled>停止相機</button>
+    <label for="upload">或上傳照片解析</label>
+    <input id="upload" type="file" accept="image/*" capture="environment">
+  </div>
+
+  <video id="preview" muted playsinline></video>
+  <div class="out" id="result">結果將顯示在這裡</div>
+</div>
+
+<!-- 掃描功能 -->
+<script type="module">
+import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm";
+import { NotFoundException } from "https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
+
+const startBtn = document.getElementById('startBtn');
+const stopBtn  = document.getElementById('stopBtn');
+const upload   = document.getElementById('upload');
+const videoEl  = document.getElementById('preview');
+const resultEl = document.getElementById('result');
+
+let controls = null;
+let reader   = null;
+
+function show(text) {
+  resultEl.textContent = text;
+}
+
+function linkify(text) {
+  try {
+    const url = new URL(text);
+    return `<a href="${url.href}" target="_blank" rel="noopener noreferrer">${url.href}</a>`;
+  } catch {
+    return text;
+  }
+}
+
+async function startScan() {
+  if (controls) return;
+  reader = reader || new BrowserMultiFormatReader();
+
+  const videoConstraints = {
+    audio: false,
+    video: { facingMode: { ideal: "environment" } }
+  };
+
+  startBtn.disabled = true;
+  show("嘗試啟動相機中…請允許相機權限");
+
+  try {
+    controls = await reader.decodeFromVideoDevice(
+      null,
+      videoEl,
+      (result, err, c) => {
+        if (result) {
+          const text = result.getText();
+          const html = linkify(text);
+          resultEl.innerHTML = "✔ 已讀取：<br>" + html;
+
+          // 讀到後自動停止
+          stopScan();
+        } else if (err && !(err instanceof NotFoundException)) {
+          console.warn(err);
+        }
+      }
+    );
+
+    stopBtn.disabled = false;
+    show("相機已啟動，請把 QR Code 對準取景框");
+  } catch (e) {
+    console.error(e);
+    show("❌ 無法啟動相機，可能沒有權限或非 HTTPS 環境。\n錯誤：" + e);
+    startBtn.disabled = false;
+  }
+}
+
+function stopScan() {
+  try { controls?.stop(); } catch {}
+  controls = null;
+  stopBtn.disabled = true;
+  startBtn.disabled = false;
+}
+
+startBtn.addEventListener('click', startScan);
+stopBtn.addEventListener('click', stopScan);
+
+// 圖片上傳解析
+upload.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  show("讀取圖片中…");
+  const url = URL.createObjectURL(file);
+
+  try {
+    reader = reader || new BrowserMultiFormatReader();
+    const res = await reader.decodeFromImageUrl(url);
+    const text = res.getText();
+    const html = linkify(text);
+    resultEl.innerHTML = "✔ 已讀取：<br>" + html;
+  } catch (err) {
+    console.error(err);
+    show("❌ 沒有成功識別 QR Code，請換張更清晰的照片");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+});
+
+// 頁面卸載時停止相機
+window.addEventListener('pagehide', stopScan);
+window.addEventListener('beforeunload', stopScan);
+</script>
+
+<!-- 可選：偵測是否支援 BarcodeDetector -->
+<script>
+if ('BarcodeDetector' in window) {
+  console.log('此裝置支援 BarcodeDetector，可用原生 API 加速掃描。');
+}
+</script>
+</body>
+</html>
